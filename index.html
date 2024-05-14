@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Display a map on a webpage</title>
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="./breakpointCalculations.js"></script>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="controls"></div>
+    <div id="map"></div>
+    <script>
+      const field1 = "COPD_%";
+      const field2 = "Current_Smoking_%";
+
+      // Load data
+      let data;
+      async function loadData() {
+        const csvUrl =
+          "https://raw.githubusercontent.com/kelsey-n/data/main/JFA/PLACES_data_processed%20(1)%20simplified.csv";
+
+        const data = await d3.csv(csvUrl, d3.autoType);
+
+        const field1Breakpoints = calculateEqualIntervals(
+          data.map((d) => d[field1])
+        );
+        const field2Breakpoints = calculateEqualIntervals(
+          data.map((d) => d[field2])
+        );
+
+        return {
+          field1Breakpoints,
+          field2Breakpoints,
+        };
+      }
+
+      mapboxgl.accessToken =
+        // "pk.eyJ1Ijoia25hbmFuIiwiYSI6ImNrbDlsMXNmNjI3MnEyb25yYjNremFwYXQifQ.l6loLOR-pOL_U2kzWBSQNQ";
+        "pk.eyJ1Ijoia25hbmFuIiwiYSI6ImNsdnpmNDY3NDBpNGUycXBibTlscnp3MG0ifQ.ghqVHa8_6kBGFUBAmhuVcA";
+      const map = new mapboxgl.Map({
+        container: "map", // container ID
+        center: [-74.5, 40], // starting position [lng, lat]
+        zoom: 9, // starting zoom
+        style: "mapbox://styles/knanan/clw6km9p0002301ox0dtr3rme", // Replace with your style URL
+      });
+
+      map.on("load", async function () {
+        try {
+          // Await the loadData function and destructure the returned object
+          const { field1Breakpoints, field2Breakpoints } = await loadData();
+
+          console.log(field1Breakpoints, field2Breakpoints);
+
+          const [low1, med1] = field1Breakpoints;
+          const [low2, med2] = field2Breakpoints;
+
+          const colors = {
+            lowLow: "#d3d3d3",
+            lowMed: "#82caca",
+            lowHigh: "#82caca",
+            medLow: "#d28ac4",
+            medMed: "#736f9c",
+            medHigh: "#366792",
+            highLow: "#d606ad",
+            highMed: "#7a1989",
+            highHigh: "#451d80",
+          };
+
+          map.addLayer({
+            id: "custom-layer",
+            type: "fill", // or 'line', 'circle', depending on your data type
+            source: {
+              type: "vector",
+              url: "mapbox://knanan.b3847kbo", // Replace with your tileset ID
+            },
+            "source-layer": "joined_data_2-7nub1l", // Replace with the actual name of the layer in your tileset
+            paint: {
+              //"#d3d3d3",
+              "fill-color": [
+                "case",
+                [
+                  "all",
+                  ["<=", ["get", field1], low1],
+                  ["<=", ["get", field2], low2],
+                ],
+                colors.lowLow,
+                [
+                  "all",
+                  ["<=", ["get", field1], low1],
+                  [
+                    "all",
+                    [">", ["get", field2], low2],
+                    ["<=", ["get", field2], med2],
+                  ],
+                ],
+                colors.lowMed,
+                [
+                  "all",
+                  ["<=", ["get", field1], low1],
+                  [">", ["get", field2], med2],
+                ],
+                colors.lowHigh,
+                [
+                  "all",
+                  [
+                    "all",
+                    [">", ["get", field1], low1],
+                    ["<=", ["get", field1], med1],
+                  ],
+                  ["<=", ["get", field2], low2],
+                ],
+                colors.medLow,
+                [
+                  "all",
+                  [
+                    "all",
+                    [">", ["get", field1], low1],
+                    ["<=", ["get", field1], med1],
+                  ],
+                  [
+                    "all",
+                    [">", ["get", field2], low2],
+                    ["<=", ["get", field2], med2],
+                  ],
+                ],
+                colors.medMed,
+                [
+                  "all",
+                  [
+                    "all",
+                    [">", ["get", field1], low1],
+                    ["<=", ["get", field1], med1],
+                  ],
+                  [">", ["get", field2], med2],
+                ],
+                colors.medHigh,
+                [
+                  "all",
+                  [">", ["get", field1], med1],
+                  ["<=", ["get", field2], low2],
+                ],
+                colors.highLow,
+                [
+                  "all",
+                  [">", ["get", field1], med1],
+                  [
+                    "all",
+                    [">", ["get", field2], low2],
+                    ["<=", ["get", field2], med2],
+                  ],
+                ],
+                colors.highMed,
+                [
+                  "all",
+                  [">", ["get", field1], med1],
+                  [">", ["get", field2], med2],
+                ],
+                colors.highHigh,
+                "#000", // Default color if none of the conditions are met
+              ],
+              "fill-outline-color": "#A9A9A9",
+            },
+          });
+        } catch (error) {
+          console.error("Error loading data or adding layer:", error);
+        }
+      });
+    </script>
+  </body>
+</html>
