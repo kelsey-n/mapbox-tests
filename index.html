@@ -13,6 +13,7 @@
     />
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="https://unpkg.com/d3-scale-cluster@1.3.1/dist/d3-scale-cluster.min.js"></script>
     <script src="./breakpointCalculations.js"></script>
     <style>
       body {
@@ -21,44 +22,71 @@
       }
       #map {
         position: absolute;
-        top: 40px;
+        top: 70px;
         bottom: 0;
         width: 100%;
+      }
+      .flex {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .breakpoints {
+        display: flex;
+        flex-direction: row;
+        gap: 130px;
       }
     </style>
   </head>
   <body>
-    <div class="controls">
-      <select id="field1-selector" class="selector">
-        <option value="Current_Asthma_%">Current_Asthma_%</option>
-        <option value="COPD_%">COPD_%</option>
-        <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
-        <option value="Current Asthma_TotalPopulation">
-          Current Asthma_TotalPopulation
-        </option>
-        <option value="Current_Smoking_%">Current_Smoking_%</option>
-        <option value="Current Smoking_TotalPopulation">
-          Current Smoking_TotalPopulation
-        </option>
-      </select>
-      <select id="field2-selector" class="selector" style="left: 150px">
-        <option value="Current_Smoking_%">Current_Smoking_%</option>
-        <option value="COPD_%">COPD_%</option>
-        <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
-        <option value="Current_Asthma_%">Current_Asthma_%</option>
-        <option value="Current Asthma_TotalPopulation">
-          Current Asthma_TotalPopulation
-        </option>
-        <option value="Current Smoking_TotalPopulation">
-          Current Smoking_TotalPopulation
-        </option>
-      </select>
+    <div class="flex">
+      <div class="controls">
+        <select id="field1-selector" class="selector">
+          <option value="Current_Asthma_%">Current_Asthma_%</option>
+          <option value="COPD_%">COPD_%</option>
+          <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
+          <option value="Current Asthma_TotalPopulation">
+            Current Asthma_TotalPopulation
+          </option>
+          <option value="Current_Smoking_%">Current_Smoking_%</option>
+          <option value="Current Smoking_TotalPopulation">
+            Current Smoking_TotalPopulation
+          </option>
+        </select>
+        <select id="field2-selector" class="selector" style="left: 150px">
+          <option value="Current_Smoking_%">Current_Smoking_%</option>
+          <option value="COPD_%">COPD_%</option>
+          <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
+          <option value="Current_Asthma_%">Current_Asthma_%</option>
+          <option value="Current Asthma_TotalPopulation">
+            Current Asthma_TotalPopulation
+          </option>
+          <option value="Current Smoking_TotalPopulation">
+            Current Smoking_TotalPopulation
+          </option>
+        </select>
+        <select id="scale-selector" class="selector" style="left: 300px">
+          <!-- <option value="equal%">equal intervals</option> -->
+          <option value="quantize">
+            quantize scale (equal-sized intervals by domain)
+          </option>
+          <option value="quantile">
+            quantile scale (equal-sized bins by freq.)
+          </option>
+          <option value="cluster">cluster scale (natural breaks)</option>
+        </select>
+      </div>
+      <div class="breakpoints">
+        <div id="field1-breakpoints">field1brekapoints</div>
+        <div id="field2-breakpoints">field2brekapoints</div>
+      </div>
     </div>
     <div id="map"></div>
     <script>
       let field1 = "Current_Asthma_%";
       //   const field1 = "COPD_%";
       let field2 = "Current_Smoking_%";
+      let intervals = "equal";
 
       const colors = {
         lowLow: "#d3d3d3",
@@ -93,19 +121,46 @@
         style: "mapbox://styles/knanan/clw6km9p0002301ox0dtr3rme", // Replace with your style URL
       });
 
-      function updateMapLayer(field1, field2, map, data, layerConfig) {
+      function updateMapLayer(
+        field1,
+        field2,
+        map,
+        data,
+        layerConfig,
+        intervals = "equal"
+      ) {
         // Function to update map layers based on selected fields
         // This would involve fetching data, calculating intervals, and updating the layer style
         console.log("Update map layers using:", field1, field2);
 
-        const field1Breakpoints = calculateEqualIntervals(
-          data.map((d) => d[field1])
-        );
-        const field2Breakpoints = calculateEqualIntervals(
-          data.map((d) => d[field2])
-        );
+        let field1Breakpoints, field2Breakpoints;
+
+        if (intervals === "quantize") {
+          field1Breakpoints = quantizeIntervals(data.map((d) => d[field1]));
+          field2Breakpoints = quantizeIntervals(data.map((d) => d[field2]));
+        } else if (intervals === "quantile") {
+          field1Breakpoints = quantileIntervals(data.map((d) => d[field1]));
+          field2Breakpoints = quantileIntervals(data.map((d) => d[field2]));
+        } else if (intervals === "cluster") {
+          field1Breakpoints = clusterIntervals(data.map((d) => d[field1]));
+          field2Breakpoints = clusterIntervals(data.map((d) => d[field2]));
+        } else {
+          field1Breakpoints = calculateEqualIntervals(
+            data.map((d) => d[field1])
+          );
+          field2Breakpoints = calculateEqualIntervals(
+            data.map((d) => d[field2])
+          );
+        }
 
         console.log(field1Breakpoints, field2Breakpoints);
+
+        document.getElementById(
+          "field1-breakpoints"
+        ).innerHTML = `[${field1Breakpoints.map((d) => d3.format(".3n")(d))}]`;
+        document.getElementById(
+          "field2-breakpoints"
+        ).innerHTML = `[${field2Breakpoints.map((d) => d3.format(".3n")(d))}]`;
 
         const [low1, med1] = field1Breakpoints;
         const [low2, med2] = field2Breakpoints;
@@ -218,11 +273,6 @@
         });
       }
 
-      //         map.on('load', function() {
-      //     // Initial map layer setup
-      //     updateMapLayer('field1', 'field2');
-      // });
-
       map.on("load", async function () {
         try {
           // Await the loadData function and destructure the returned object
@@ -243,7 +293,7 @@
             "source-layer": "joined_data_2-7nub1l", // Replace with the actual name of the layer in your tileset
           };
 
-          updateMapLayer(field1, field2, map, data, layerConfig);
+          updateMapLayer(field1, field2, map, data, layerConfig, intervals);
 
           document
             .getElementById("field1-selector")
@@ -256,7 +306,8 @@
                 field2,
                 map,
                 data,
-                layerConfig
+                layerConfig,
+                intervals
               );
             });
 
@@ -271,8 +322,17 @@
                 field2,
                 map,
                 data,
-                layerConfig
+                layerConfig,
+                intervals
               );
+            });
+
+          // Handle change in scale dropdown
+          document
+            .getElementById("scale-selector")
+            .addEventListener("change", function () {
+              intervals = this.value;
+              updateMapLayer(field1, field2, map, data, layerConfig, intervals);
             });
         } catch (error) {
           console.error("Error loading data or adding layer:", error);

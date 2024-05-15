@@ -13,3 +13,25 @@ function calculateEqualIntervals(data) {
   // Return the breakpoints
   return [breakpoint1, breakpoint2];
 }
+
+// Should be the same as equal intervals above
+function quantizeIntervals(data) {
+  quantizeScale = d3
+    .scaleQuantize()
+    .domain(d3.extent(data)) // pass only the extreme values to a scaleQuantize’s domain
+    .range(["low", "med", "high"]);
+
+  return quantizeScale.thresholds();
+}
+
+function quantileIntervals(data) {
+  quantileScale = d3.scaleQuantile().domain(data).range(["low", "med", "high"]);
+
+  return quantileScale.quantiles();
+}
+
+function clusterIntervals(data) {
+  clusterScale = d3.scaleCluster().domain(data).range(["low", "med", "high"]);
+
+  return clusterScale.clusters();
+}
