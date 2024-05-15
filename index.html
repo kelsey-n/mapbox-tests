@@ -21,19 +21,56 @@
       }
       #map {
         position: absolute;
-        top: 0;
+        top: 40px;
         bottom: 0;
         width: 100%;
       }
     </style>
   </head>
   <body>
-    <div class="controls"></div>
+    <div class="controls">
+      <select id="field1-selector" class="selector">
+        <option value="Current_Asthma_%">Current_Asthma_%</option>
+        <option value="COPD_%">COPD_%</option>
+        <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
+        <option value="Current Asthma_TotalPopulation">
+          Current Asthma_TotalPopulation
+        </option>
+        <option value="Current_Smoking_%">Current_Smoking_%</option>
+        <option value="Current Smoking_TotalPopulation">
+          Current Smoking_TotalPopulation
+        </option>
+      </select>
+      <select id="field2-selector" class="selector" style="left: 150px">
+        <option value="Current_Smoking_%">Current_Smoking_%</option>
+        <option value="COPD_%">COPD_%</option>
+        <option value="COPD_TotalPopulation">COPD_TotalPopulation</option>
+        <option value="Current_Asthma_%">Current_Asthma_%</option>
+        <option value="Current Asthma_TotalPopulation">
+          Current Asthma_TotalPopulation
+        </option>
+        <option value="Current Smoking_TotalPopulation">
+          Current Smoking_TotalPopulation
+        </option>
+      </select>
+    </div>
     <div id="map"></div>
     <script>
-      const field1 = "Current_Asthma_%";
+      let field1 = "Current_Asthma_%";
       //   const field1 = "COPD_%";
-      const field2 = "Current_Smoking_%";
+      let field2 = "Current_Smoking_%";
+
+      const colors = {
+        lowLow: "#d3d3d3",
+        lowMed: "#82caca",
+        lowHigh: "#82caca",
+        medLow: "#d28ac4",
+        medMed: "#736f9c",
+        medHigh: "#366792",
+        highLow: "#d606ad",
+        highMed: "#7a1989",
+        highHigh: "#451d80",
+      };
 
       // Load data
       let data;
@@ -43,17 +80,7 @@
 
         const data = await d3.csv(csvUrl, d3.autoType);
 
-        const field1Breakpoints = calculateEqualIntervals(
-          data.map((d) => d[field1])
-        );
-        const field2Breakpoints = calculateEqualIntervals(
-          data.map((d) => d[field2])
-        );
-
-        return {
-          field1Breakpoints,
-          field2Breakpoints,
-        };
+        return data;
       }
 
       mapboxgl.accessToken =
@@ -66,123 +93,187 @@
         style: "mapbox://styles/knanan/clw6km9p0002301ox0dtr3rme", // Replace with your style URL
       });
 
+      function updateMapLayer(field1, field2, map, data, layerConfig) {
+        // Function to update map layers based on selected fields
+        // This would involve fetching data, calculating intervals, and updating the layer style
+        console.log("Update map layers using:", field1, field2);
+
+        const field1Breakpoints = calculateEqualIntervals(
+          data.map((d) => d[field1])
+        );
+        const field2Breakpoints = calculateEqualIntervals(
+          data.map((d) => d[field2])
+        );
+
+        console.log(field1Breakpoints, field2Breakpoints);
+
+        const [low1, med1] = field1Breakpoints;
+        const [low2, med2] = field2Breakpoints;
+
+        if (map.getLayer("custom-layer")) {
+          // Remove the layer
+          map.removeLayer("custom-layer");
+          map.removeSource("custom-layer");
+        }
+        // if (map.getSource("joined_data_2-7nub1l")) {
+        //   // Remove the source
+        //   map.removeSource("joined_data_2-7nub1l");
+        // }
+
+        map.addLayer({
+          id: "custom-layer",
+          //   type: "fill", // or 'line', 'circle', depending on your data type
+          //   source: {
+          //     type: "vector",
+          //     url: "mapbox://knanan.b3847kbo", // Replace with your tileset ID
+          //   },
+          //   "source-layer": "joined_data_2-7nub1l", // Replace with the actual name of the layer in your tileset
+          paint: {
+            //"#d3d3d3",
+            "fill-color": [
+              "case",
+              [
+                "all",
+                ["<=", ["get", field1], low1],
+                ["<=", ["get", field2], low2],
+              ],
+              colors.lowLow,
+              [
+                "all",
+                ["<=", ["get", field1], low1],
+                [
+                  "all",
+                  [">", ["get", field2], low2],
+                  ["<=", ["get", field2], med2],
+                ],
+              ],
+              colors.lowMed,
+              [
+                "all",
+                ["<=", ["get", field1], low1],
+                [">", ["get", field2], med2],
+              ],
+              colors.lowHigh,
+              [
+                "all",
+                [
+                  "all",
+                  [">", ["get", field1], low1],
+                  ["<=", ["get", field1], med1],
+                ],
+                ["<=", ["get", field2], low2],
+              ],
+              colors.medLow,
+              [
+                "all",
+                [
+                  "all",
+                  [">", ["get", field1], low1],
+                  ["<=", ["get", field1], med1],
+                ],
+                [
+                  "all",
+                  [">", ["get", field2], low2],
+                  ["<=", ["get", field2], med2],
+                ],
+              ],
+              colors.medMed,
+              [
+                "all",
+                [
+                  "all",
+                  [">", ["get", field1], low1],
+                  ["<=", ["get", field1], med1],
+                ],
+                [">", ["get", field2], med2],
+              ],
+              colors.medHigh,
+              [
+                "all",
+                [">", ["get", field1], med1],
+                ["<=", ["get", field2], low2],
+              ],
+              colors.highLow,
+              [
+                "all",
+                [">", ["get", field1], med1],
+                [
+                  "all",
+                  [">", ["get", field2], low2],
+                  ["<=", ["get", field2], med2],
+                ],
+              ],
+              colors.highMed,
+              [
+                "all",
+                [">", ["get", field1], med1],
+                [">", ["get", field2], med2],
+              ],
+              colors.highHigh,
+              "#000", // Default color if none of the conditions are met
+            ],
+            "fill-outline-color": "#A9A9A9",
+          },
+          ...layerConfig,
+        });
+      }
+
+      //         map.on('load', function() {
+      //     // Initial map layer setup
+      //     updateMapLayer('field1', 'field2');
+      // });
+
       map.on("load", async function () {
         try {
           // Await the loadData function and destructure the returned object
-          const { field1Breakpoints, field2Breakpoints } = await loadData();
+          //   const { field1Breakpoints, field2Breakpoints } = await loadData();
+          const data = await loadData();
 
-          console.log(field1Breakpoints, field2Breakpoints);
+          console.log(data);
 
-          const [low1, med1] = field1Breakpoints;
-          const [low2, med2] = field2Breakpoints;
+          const layerId = "custom-layer";
+          // const sourceId = 'existing-source'; // ID of the already added source
 
-          const colors = {
-            lowLow: "#d3d3d3",
-            lowMed: "#82caca",
-            lowHigh: "#82caca",
-            medLow: "#d28ac4",
-            medMed: "#736f9c",
-            medHigh: "#366792",
-            highLow: "#d606ad",
-            highMed: "#7a1989",
-            highHigh: "#451d80",
-          };
-
-          map.addLayer({
-            id: "custom-layer",
-            type: "fill", // or 'line', 'circle', depending on your data type
+          const layerConfig = {
+            type: "fill",
             source: {
               type: "vector",
               url: "mapbox://knanan.b3847kbo", // Replace with your tileset ID
             },
             "source-layer": "joined_data_2-7nub1l", // Replace with the actual name of the layer in your tileset
-            paint: {
-              //"#d3d3d3",
-              "fill-color": [
-                "case",
-                [
-                  "all",
-                  ["<=", ["get", field1], low1],
-                  ["<=", ["get", field2], low2],
-                ],
-                colors.lowLow,
-                [
-                  "all",
-                  ["<=", ["get", field1], low1],
-                  [
-                    "all",
-                    [">", ["get", field2], low2],
-                    ["<=", ["get", field2], med2],
-                  ],
-                ],
-                colors.lowMed,
-                [
-                  "all",
-                  ["<=", ["get", field1], low1],
-                  [">", ["get", field2], med2],
-                ],
-                colors.lowHigh,
-                [
-                  "all",
-                  [
-                    "all",
-                    [">", ["get", field1], low1],
-                    ["<=", ["get", field1], med1],
-                  ],
-                  ["<=", ["get", field2], low2],
-                ],
-                colors.medLow,
-                [
-                  "all",
-                  [
-                    "all",
-                    [">", ["get", field1], low1],
-                    ["<=", ["get", field1], med1],
-                  ],
-                  [
-                    "all",
-                    [">", ["get", field2], low2],
-                    ["<=", ["get", field2], med2],
-                  ],
-                ],
-                colors.medMed,
-                [
-                  "all",
-                  [
-                    "all",
-                    [">", ["get", field1], low1],
-                    ["<=", ["get", field1], med1],
-                  ],
-                  [">", ["get", field2], med2],
-                ],
-                colors.medHigh,
-                [
-                  "all",
-                  [">", ["get", field1], med1],
-                  ["<=", ["get", field2], low2],
-                ],
-                colors.highLow,
-                [
-                  "all",
-                  [">", ["get", field1], med1],
-                  [
-                    "all",
-                    [">", ["get", field2], low2],
-                    ["<=", ["get", field2], med2],
-                  ],
-                ],
-                colors.highMed,
-                [
-                  "all",
-                  [">", ["get", field1], med1],
-                  [">", ["get", field2], med2],
-                ],
-                colors.highHigh,
-                "#000", // Default color if none of the conditions are met
-              ],
-              "fill-outline-color": "#A9A9A9",
-            },
-          });
+          };
+
+          updateMapLayer(field1, field2, map, data, layerConfig);
+
+          document
+            .getElementById("field1-selector")
+            .addEventListener("change", function () {
+              field1 = this.value;
+              updateMapLayer(
+                // this.value,
+                // document.getElementById("field2-selector").value,
+                field1,
+                field2,
+                map,
+                data,
+                layerConfig
+              );
+            });
+
+          document
+            .getElementById("field2-selector")
+            .addEventListener("change", function () {
+              field2 = this.value;
+              updateMapLayer(
+                // document.getElementById("field1-selector").value,
+                // this.value,
+                field1,
+                field2,
+                map,
+                data,
+                layerConfig
+              );
+            });
         } catch (error) {
           console.error("Error loading data or adding layer:", error);
         }
