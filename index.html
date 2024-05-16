@@ -36,6 +36,11 @@
         flex-direction: row;
         gap: 130px;
       }
+      .mapboxgl-popup {
+        max-width: 400px;
+        font: 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
@@ -170,6 +175,11 @@
           map.removeLayer("custom-layer");
           map.removeSource("custom-layer");
         }
+        if (map.getLayer("highlight-census-tract")) {
+          // Remove the layer
+          map.removeLayer("highlight-census-tract");
+          map.removeSource("highlight-feature");
+        }
         // if (map.getSource("joined_data_2-7nub1l")) {
         //   // Remove the source
         //   map.removeSource("joined_data_2-7nub1l");
@@ -275,6 +285,26 @@
           },
           ...layerConfig,
         });
+
+        // add an empty data source, which we will use to highlight the CD that the user is hovering over
+        map.addSource("highlight-feature", {
+          type: "geojson",
+          data: {
+            type: "FeatureCollection",
+            features: [],
+          },
+        });
+        // add a layer for the highlighted tract
+        map.addLayer({
+          id: "highlight-census-tract",
+          type: "line",
+          source: "highlight-feature",
+          paint: {
+            "line-width": 2,
+            "line-opacity": 0.9,
+            "line-color": "black",
+          },
+        });
       }
 
       map.on("load", async function () {
@@ -298,6 +328,52 @@
           };
 
           updateMapLayer(field1, field2, map, data, layerConfig, intervals);
+
+          // // add an empty data source, which we will use to highlight the CD that the user is hovering over
+          // map.addSource("highlight-feature", {
+          //   type: "geojson",
+          //   data: {
+          //     type: "FeatureCollection",
+          //     features: [],
+          //   },
+          // });
+          // // add a layer for the highlighted tract
+          // map.addLayer({
+          //   id: "highlight-census-tract",
+          //   type: "line",
+          //   source: "highlight-feature",
+          //   paint: {
+          //     "line-width": 2,
+          //     "line-opacity": 0.9,
+          //     "line-color": "black",
+          //   },
+          // });
+
+          // Create a popup, but don't add it to the map yet.
+          const popup = new mapboxgl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+          });
+
+          map.on("mousemove", "custom-layer", (e) => {
+            // Change the cursor style as a UI indicator.
+            map.getCanvas().style.cursor = "pointer";
+
+            // console.log(e.features[0]);
+
+            // Content for popup
+            const description = `${e.features[0].properties.CountyName} County,
+            ${e.features[0].properties.StateDesc}<br>
+            ${e.features[0].properties.NAMELSAD}<br>
+            ${field1}: ${e.features[0].properties[field1]}<br>
+            ${field2}: ${e.features[0].properties[field2]}<br>
+            `;
+
+            popup.setLngLat(e.lngLat).setHTML(description).addTo(map);
+
+            // set this tract's polygon feature as the data for the highlight source
+            map.getSource("highlight-feature").setData(e.features[0].geometry);
+          });
 
           document
             .getElementById("field1-selector")
