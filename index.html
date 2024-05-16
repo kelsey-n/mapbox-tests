@@ -375,6 +375,16 @@
             map.getSource("highlight-feature").setData(e.features[0].geometry);
           });
 
+          map.on("mouseleave", "custom-layer", (e) => {
+            // remove the Popup, reset cursor, remove data from highlight layer
+            popup.remove();
+            map.getCanvas().style.cursor = "";
+            map.getSource("highlight-feature").setData({
+              type: "FeatureCollection",
+              features: [],
+            });
+          });
+
           document
             .getElementById("field1-selector")
             .addEventListener("change", function () {
