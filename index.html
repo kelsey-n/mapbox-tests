@@ -187,6 +187,10 @@
             //"#d3d3d3",
             "fill-color": [
               "case",
+              ["==", ["get", field1], null], // Set color to white if missing values
+              "#ffffff",
+              ["==", ["get", field2], null],
+              "#ffffff",
               [
                 "all",
                 ["<=", ["get", field1], low1],
@@ -265,7 +269,7 @@
                 [">", ["get", field2], med2],
               ],
               colors.highHigh,
-              "#000", // Default color if none of the conditions are met
+              "#ffffff", // Default color if none of the conditions are met
             ],
             "fill-outline-color": "#A9A9A9",
           },
